@@ -5,6 +5,8 @@
             [loom.alg :refer [distinct-edges loners]]
             [loom.attr :refer [attr? attr attrs]]
             [clojure.string :refer [escape]]
+            #?(:clj [clojure.pprint :refer [pprint]]
+               :cljs [cljs.pprint :refer [pprint]])
             #?(:clj [clojure.java.io :refer [file]])
             #?(:clj [clojure.java.shell :refer [sh]]))
   (:import #?(:clj (java.io FileWriter FileOutputStream))
@@ -42,6 +44,10 @@
   (let [d? (directed? g)
         w? (weighted? g)
         a? (attr? g)
+        node-id (fn [n]
+                  (str
+                    (or (when a? (attr g n :id))
+                        n)))
         node-label (or node-label
                        (if a?
                          #(attr g % :label)
@@ -63,17 +69,17 @@
           (.append (str "  " (name k) " "))
           (.append (dot-attrs (k opts))))))
     (doseq [[n1 n2] (distinct-edges g)]
-      (let [n1l (str (or (node-label n1) n1))
-            n2l (str (or (node-label n2) n2))
+      (let [n1id (node-id n1)
+            n2id (node-id n2)
             el (edge-label n1 n2)
             eattrs (assoc (if a?
                             (attrs g n1 n2) {})
                      :label el)]
         (doto sb
           (.append "  \"")
-          (.append (dot-esc n1l))
+          (.append (dot-esc n1id))
           (.append (if d? "\" -> \"" "\" -- \""))
-          (.append (dot-esc n2l))
+          (.append (dot-esc n2id))
           (.append \"))
         (when (or (:label eattrs) (< 1 (count eattrs)))
           (.append sb \space)
@@ -82,7 +88,7 @@
     (doseq [n (nodes g)]
       (doto sb
         (.append "  \"")
-        (.append (dot-esc (str (or (node-label n) n))))
+        (.append (dot-esc (node-id n)))
         (.append \"))
       (when-let [nattrs (when a?
                           (dot-attrs (attrs g n)))]
